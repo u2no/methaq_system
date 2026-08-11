@@ -477,6 +477,28 @@ include __DIR__ . '/includes/header.php';
 }
 
 
+/* title bar */
+
+.page-top {
+    background-color: white;
+    padding: 15px 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 18px;
+}
+
+.page-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.page-title-wrap h5 {
+    margin: 0;
+    font-size: 20px;
+}
+
+
 /* success message */
 
 .success-message {
@@ -778,25 +800,30 @@ include __DIR__ . '/includes/sidebar.php';
 <main class="content">
 
 
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div class="page-top d-flex justify-content-between align-items-center">
 
-    <!-- right -->
-    <h5 class="fw-bold text-dark mb-0">
-        <i class="fa-solid fa-key me-2 text-primary"></i>
-        تسليم العهدة
-    </h5>
+        <!-- right -->
+        <div class="page-title-wrap">
 
-    <!-- left -->
-    <div>
-        <img
-            src="mod_logo.png"
-            alt="شعار وزارة الدفاع"
-            style="height: 35px; width: auto;"
-            class="img-fluid"
-        >
+            <i class="fa-solid fa-key text-primary"></i>
+
+            <h5 class="fw-bold text-dark">
+                تسليم العهدة
+            </h5>
+
+        </div>
+
+        <!-- left -->
+        <div>
+            <img
+                src="mod_logo.png"
+                alt="شعار وزارة الدفاع"
+                style="height: 35px; width: auto;"
+                class="img-fluid"
+            >
+        </div>
+
     </div>
-
-</div>
 
 
         <!-- success meesage -->

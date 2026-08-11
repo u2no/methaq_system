@@ -349,6 +349,28 @@ include __DIR__ . '/includes/header.php';
 }
 
 
+/* title bar */
+
+.page-top {
+    background-color: white;
+    padding: 15px 18px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 18px;
+}
+
+.page-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.page-title-wrap h5 {
+    margin: 0;
+    font-size: 20px;
+}
+
+
 /* messages */
 
 .success-message {
@@ -723,13 +745,18 @@ include __DIR__ . '/includes/sidebar.php';
 
     <!-- page title-->
 
-    <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div class="page-top d-flex justify-content-between align-items-center">
 
         <!-- right -->
-        <h5 class="fw-bold text-dark mb-0">
-            <i class="fa-solid fa-rotate-left me-2 text-primary"></i>
-        استلام العهدة
-        </h5>
+        <div class="page-title-wrap">
+
+            <i class="fa-solid fa-rotate-left text-primary"></i>
+
+            <h5 class="fw-bold text-dark">
+                استلام العهدة
+            </h5>
+
+        </div>
 
         <!-- left -->
         <div>
