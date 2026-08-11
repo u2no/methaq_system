@@ -14,6 +14,7 @@ function vehicle_status_options(): array
 
 /**
  * يبني جملة WHERE وقيم البحث/الفلترة لقائمة المركبات.
+ * البحث يتم فقط برقم اللوحة (حسب طلب الفريق).
  * تُعاد كمصفوفة [$whereSql, $params] بحيث يسهل اختبارها دون الحاجة لقاعدة بيانات حقيقية.
  */
 function build_vehicle_filters(?string $search, ?string $type, ?string $status): array
@@ -23,7 +24,7 @@ function build_vehicle_filters(?string $search, ?string $type, ?string $status):
 
     $search = trim((string) $search);
     if ($search !== '') {
-        $conditions[] = '(v.plate_number LIKE :search OR v.model LIKE :search OR v.color LIKE :search)';
+        $conditions[] = 'v.plate_number LIKE :search';
         $params[':search'] = '%' . $search . '%';
     }
 
@@ -51,8 +52,8 @@ function vehicle_status_badge_class(string $status): string
 }
 
 /**
- * يجلب قائمة المركبات مع المستلم الحالي، نوع العهدة الحالية، ورقم العهدة الحالية
- * (إن وُجدت عهدة نشطة) عبر LEFT JOIN مع جدولي العهد والأشخاص، مع تطبيق البحث والفلاتر.
+ * يجلب قائمة المركبات مع المستلم الحالي ونوع العهدة الحالية (إن وُجدت عهدة نشطة)
+ * عبر LEFT JOIN مع جدولي العهد والأشخاص، مع تطبيق البحث والفلاتر.
  */
 function fetch_vehicles(PDO $pdo, ?string $search, ?string $type, ?string $status): array
 {
@@ -65,10 +66,8 @@ function fetch_vehicles(PDO $pdo, ?string $search, ?string $type, ?string $statu
             v.type,
             v.model,
             v.color,
-            v.department,
             v.notes,
             v.status,
-            c.id AS current_custody_id,
             p.name AS current_holder,
             c.custody_type AS current_custody_type
         FROM vehicles v
@@ -91,13 +90,12 @@ function fetch_vehicle_types(PDO $pdo): array
     return $pdo->query("SELECT DISTINCT type FROM vehicles ORDER BY type")->fetchAll(PDO::FETCH_COLUMN);
 }
 
-/** يجلب بيانات مركبة واحدة مع المستلم الحالي، نوع العهدة الحالية، ورقم العهدة الحالية */
+/** يجلب بيانات مركبة واحدة مع المستلم الحالي ونوع العهدة الحالية */
 function fetch_vehicle_by_id(PDO $pdo, int $id): ?array
 {
     $stmt = $pdo->prepare("
         SELECT
             v.*,
-            c.id AS current_custody_id,
             p.name AS current_holder,
             p.phone AS current_holder_phone,
             c.custody_type AS current_custody_type,
@@ -151,9 +149,6 @@ function validate_vehicle_input(array $data): array
     }
     if (trim((string) ($data['model'] ?? '')) === '') {
         $errors['model'] = 'الموديل مطلوب.';
-    }
-    if (trim((string) ($data['department'] ?? '')) === '') {
-        $errors['department'] = 'الإدارة / القسم مطلوب.';
     }
 
     return $errors;

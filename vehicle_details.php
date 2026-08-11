@@ -298,18 +298,6 @@ include __DIR__ . '/includes/sidebar.php';
             </div>
 
             <div class="detail-item">
-                <span class="detail-label">الإدارة / القسم</span>
-                <span class="detail-value"><?php echo htmlspecialchars($vehicle['department'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></span>
-            </div>
-
-            <div class="detail-item">
-                <span class="detail-label">رقم العهدة الحالية</span>
-                <span class="detail-value">
-                    <?php echo $vehicle['current_custody_id'] ? '#' . (int) $vehicle['current_custody_id'] : '-'; ?>
-                </span>
-            </div>
-
-            <div class="detail-item">
                 <span class="detail-label">المستلم الحالي</span>
                 <span class="detail-value"><?php echo $vehicle['current_holder'] ? htmlspecialchars($vehicle['current_holder'], ENT_QUOTES, 'UTF-8') : '-'; ?></span>
             </div>

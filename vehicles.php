@@ -70,9 +70,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'xls') {
             <th>نوع المركبة</th>
             <th>الموديل</th>
             <th>اللون</th>
-            <th>الإدارة / القسم</th>
             <th>الحالة</th>
-            <th>رقم العهدة</th>
             <th>المستلم الحالي</th>
             <th>نوع العهدة الحالية</th>
             <th>ملاحظات</th>
@@ -85,9 +83,7 @@ if (isset($_GET['export']) && $_GET['export'] === 'xls') {
         echo '<td>' . htmlspecialchars($v['type'], ENT_QUOTES, 'UTF-8') . '</td>';
         echo '<td>' . htmlspecialchars($v['model'], ENT_QUOTES, 'UTF-8') . '</td>';
         echo '<td>' . htmlspecialchars($v['color'] ?: '-', ENT_QUOTES, 'UTF-8') . '</td>';
-        echo '<td>' . htmlspecialchars($v['department'] ?: '-', ENT_QUOTES, 'UTF-8') . '</td>';
         echo '<td>' . htmlspecialchars($v['status'], ENT_QUOTES, 'UTF-8') . '</td>';
-        echo '<td>' . ($v['current_custody_id'] ? '#' . (int) $v['current_custody_id'] : '-') . '</td>';
         echo '<td>' . htmlspecialchars($v['current_holder'] ?: '-', ENT_QUOTES, 'UTF-8') . '</td>';
         echo '<td>' . htmlspecialchars($v['current_custody_type'] ?: '-', ENT_QUOTES, 'UTF-8') . '</td>';
         echo '<td>' . htmlspecialchars($v['notes'] ?: '-', ENT_QUOTES, 'UTF-8') . '</td>';
@@ -537,7 +533,7 @@ include __DIR__ . '/includes/sidebar.php';
                     type="text"
                     name="q"
                     class="filter-input"
-                    placeholder="ابحث برقم اللوحة أو الموديل أو اللون..."
+                    placeholder="ابحث برقم اللوحة..."
                     value="<?php echo htmlspecialchars($search, ENT_QUOTES, 'UTF-8'); ?>"
                 >
 
@@ -602,9 +598,7 @@ include __DIR__ . '/includes/sidebar.php';
                         <th>نوع المركبة</th>
                         <th>الموديل</th>
                         <th>اللون</th>
-                        <th>الإدارة / القسم</th>
                         <th>الحالة</th>
-                        <th>رقم العهدة</th>
                         <th>المستلم الحالي</th>
                         <th>الإجراءات</th>
                     </tr>
@@ -615,7 +609,7 @@ include __DIR__ . '/includes/sidebar.php';
                     <?php if (empty($vehicles)): ?>
 
                         <tr>
-                            <td colspan="10" class="empty-row">
+                            <td colspan="8" class="empty-row">
                                 لا توجد مركبات مطابقة لبحثك أو الفلاتر المحددة.
                             </td>
                         </tr>
@@ -635,20 +629,10 @@ include __DIR__ . '/includes/sidebar.php';
 
                                 <td><?php echo htmlspecialchars($vehicle['color'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
 
-                                <td><?php echo htmlspecialchars($vehicle['department'] ?: '-', ENT_QUOTES, 'UTF-8'); ?></td>
-
                                 <td>
                                     <span class="<?php echo vehicle_status_badge_class($vehicle['status']); ?>">
                                         <?php echo htmlspecialchars($vehicle['status'], ENT_QUOTES, 'UTF-8'); ?>
                                     </span>
-                                </td>
-
-                                <td>
-                                    <?php if (!empty($vehicle['current_custody_id'])): ?>
-                                        #<?php echo (int) $vehicle['current_custody_id']; ?>
-                                    <?php else: ?>
-                                        <span class="empty-value">-</span>
-                                    <?php endif; ?>
                                 </td>
 
                                 <td>

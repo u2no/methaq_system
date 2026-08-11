@@ -15,7 +15,6 @@ $vehicle = [
     'type' => '',
     'model' => '',
     'color' => '',
-    'department' => '',
     'notes' => '',
     'status' => 'متاحة',
 ];
@@ -51,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $vehicle['type'] = trim($_POST['type'] ?? '');
     $vehicle['model'] = trim($_POST['model'] ?? '');
     $vehicle['color'] = trim($_POST['color'] ?? '');
-    $vehicle['department'] = trim($_POST['department'] ?? '');
     $vehicle['notes'] = trim($_POST['notes'] ?? '');
 
     $errors = validate_vehicle_input($vehicle);
@@ -90,7 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     type = :type,
                     model = :model,
                     color = :color,
-                    department = :department,
                     notes = :notes
                 WHERE id = :id
             ");
@@ -100,7 +97,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':type' => $vehicle['type'],
                 ':model' => $vehicle['model'],
                 ':color' => $vehicle['color'],
-                ':department' => $vehicle['department'],
                 ':notes' => $vehicle['notes'],
                 ':id' => $id,
             ]);
@@ -108,8 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
 
             $stmt = $pdo->prepare("
-                INSERT INTO vehicles (plate_number, type, model, color, department, notes, status)
-                VALUES (:plate_number, :type, :model, :color, :department, :notes, 'متاحة')
+                INSERT INTO vehicles (plate_number, type, model, color, notes, status)
+                VALUES (:plate_number, :type, :model, :color, :notes, 'متاحة')
             ");
 
             $stmt->execute([
@@ -117,7 +113,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':type' => $vehicle['type'],
                 ':model' => $vehicle['model'],
                 ':color' => $vehicle['color'],
-                ':department' => $vehicle['department'],
                 ':notes' => $vehicle['notes'],
             ]);
 
@@ -451,23 +446,6 @@ include __DIR__ . '/includes/sidebar.php';
 
                 <div class="form-group">
                     <label>
-                        الإدارة / القسم <span class="required">*</span>
-                    </label>
-                    <input
-                        type="text"
-                        name="department"
-                        autocomplete="off"
-                        class="<?php echo isset($errors['department']) ? 'has-error' : ''; ?>"
-                        placeholder="اختر الإدارة"
-                        value="<?php echo htmlspecialchars($vehicle['department'], ENT_QUOTES, 'UTF-8'); ?>"
-                    >
-                    <?php if (isset($errors['department'])): ?>
-                        <div class="field-error"><?php echo $errors['department']; ?></div>
-                    <?php endif; ?>
-                </div>
-
-                <div class="form-group">
-                    <label>
                         الموديل <span class="required">*</span>
                     </label>
                     <input
@@ -495,12 +473,13 @@ include __DIR__ . '/includes/sidebar.php';
             </div>
 
 
-            <?php if ($isEdit && !empty($vehicle['current_custody_id'])): ?>
+
+            <?php if ($isEdit && !empty($vehicle['current_holder'])): ?>
                 <div class="form-group" style="max-width: 100%; margin-top: 20px;">
-                    <label>رقم العهدة الحالية</label>
+                    <label>المستلم الحالي</label>
                     <input
                         type="text"
-                        value="#<?php echo (int) $vehicle['current_custody_id']; ?> — <?php echo htmlspecialchars($vehicle['current_holder'] . ' (' . $vehicle['current_custody_type'] . ')', ENT_QUOTES, 'UTF-8'); ?>"
+                        value="<?php echo htmlspecialchars($vehicle['current_holder'] . ' (' . $vehicle['current_custody_type'] . ')', ENT_QUOTES, 'UTF-8'); ?>"
                         disabled
                     >
                 </div>

@@ -1,7 +1,8 @@
 <?php
 /**
  * tests/vehicles_test.php
- * اختبارات وحدة المركبات: البحث، الفلاتر، التحقق من المدخلات، شارات الحالة، رقم العهدة، ومنع حذف مركبة لها سجل.
+ * اختبارات وحدة المركبات: البحث برقم اللوحة فقط، الفلاتر، التحقق من المدخلات،
+ * شارات الحالة، ومنع حذف مركبة لها سجل عهد.
  *
  * التشغيل من سطر الأوامر داخل مجلد المشروع:
  *   php tests/vehicles_test.php
@@ -30,22 +31,34 @@ function assert_equals($expected, $actual, string $message): void
 }
 
 // ------------------------------------------------------------------
-// 1) اختبارات build_vehicle_filters
+// 1) اختبارات build_vehicle_filters (البحث برقم اللوحة فقط)
 // ------------------------------------------------------------------
 echo "1) اختبارات بناء فلاتر البحث\n";
 
 [$sql, $params] = build_vehicle_filters(null, null, null);
 assert_equals('', $sql, 'بدون أي معايير يجب ألا تكون هناك جملة WHERE');
+assert_equals([], $params, 'بدون أي معايير يجب ألا توجد قيم ربط');
 
-[$sql, $params] = build_vehicle_filters('كامري', '', '');
-assert_true(str_contains($sql, 'v.plate_number LIKE :search'), 'يجب أن تبحث في رقم اللوحة');
-assert_equals('%كامري%', $params[':search'], 'يجب تغليف نص البحث بعلامات %');
+[$sql, $params] = build_vehicle_filters('4821', '', '');
+assert_equals('WHERE v.plate_number LIKE :search', $sql, 'البحث يجب أن يكون برقم اللوحة فقط');
+assert_equals('%4821%', $params[':search'], 'يجب تغليف نص البحث بعلامات %');
+
+// التأكد أن البحث لم يعد يشمل الموديل أو اللون في جملة SQL
+assert_true(!str_contains($sql, 'v.model'), 'البحث يجب ألا يشمل الموديل بعد الآن');
+assert_true(!str_contains($sql, 'v.color'), 'البحث يجب ألا يشمل اللون بعد الآن');
 
 [$sql, $params] = build_vehicle_filters('', 'تويوتا', '');
+assert_true(str_contains($sql, 'v.type = :type'), 'فلتر النوع يجب أن يظل يعمل بشكل مستقل عن البحث');
 assert_equals('تويوتا', $params[':type'], 'قيمة فلتر النوع صحيحة');
 
 [$sql, $params] = build_vehicle_filters('', '', 'مسلمة');
-assert_equals('مسلمة', $params[':status'], 'قيمة فلتر الحالة صحيحة');
+assert_true(str_contains($sql, 'v.status = :status'), 'فلتر الحالة يجب أن يظل يعمل بشكل مستقل عن البحث');
+
+[$sql, $params] = build_vehicle_filters('4821', 'تويوتا', 'متاحة');
+assert_true(
+    str_contains($sql, 'AND') && count($params) === 3,
+    'الجمع بين البحث برقم اللوحة وفلترين يجب أن يولّد ثلاثة شروط مرتبطة بـ AND'
+);
 
 // ------------------------------------------------------------------
 // 2) اختبارات شارة الحالة
@@ -56,7 +69,7 @@ assert_true(str_contains(vehicle_status_badge_class('مسلمة'), 'status-deliv
 assert_true(str_contains(vehicle_status_badge_class('متاحة'), 'status-available'), 'حالة "متاحة" تُعرض بكلاس status-available');
 
 // ------------------------------------------------------------------
-// 3) اختبارات التحقق من مدخلات نموذج المركبة
+// 3) اختبارات التحقق من مدخلات نموذج المركبة (بدون حقل الإدارة/القسم)
 // ------------------------------------------------------------------
 echo "\n3) اختبارات التحقق من صحة المدخلات\n";
 
@@ -64,20 +77,19 @@ $errors = validate_vehicle_input([]);
 assert_true(isset($errors['plate_number']), 'رقم اللوحة مطلوب عند تركه فارغًا');
 assert_true(isset($errors['type']), 'نوع المركبة مطلوب عند تركه فارغًا');
 assert_true(isset($errors['model']), 'الموديل مطلوب عند تركه فارغًا');
-assert_true(isset($errors['department']), 'الإدارة/القسم مطلوب عند تركه فارغًا');
+assert_true(!isset($errors['department']), 'حقل الإدارة/القسم لم يعد موجودًا في التحقق');
 
 $errors = validate_vehicle_input([
     'plate_number' => 'ط ب د 4821',
     'type' => 'تويوتا',
     'model' => '2026',
-    'department' => 'قسم الإمداد',
 ]);
-assert_equals([], $errors, 'بيانات كاملة وصحيحة يجب ألا تُنتج أي أخطاء (الملاحظات ليست إلزامية)');
+assert_equals([], $errors, 'بيانات كاملة وصحيحة (بدون إدارة/قسم) يجب ألا تُنتج أي أخطاء');
 
 // ------------------------------------------------------------------
 // 4) اختبارات تكامل مع قاعدة بيانات SQLite مؤقتة في الذاكرة
 // ------------------------------------------------------------------
-echo "\n4) اختبارات تكامل مع قاعدة بيانات مؤقتة (بحث، فلاتر، رقم العهدة، ومنع الحذف)\n";
+echo "\n4) اختبارات تكامل مع قاعدة بيانات مؤقتة (بحث برقم اللوحة، فلاتر، ومنع الحذف)\n";
 
 try {
     $pdo = new PDO('sqlite::memory:');
@@ -91,7 +103,6 @@ try {
             type VARCHAR(50) NOT NULL,
             model VARCHAR(50) NOT NULL,
             color VARCHAR(30),
-            department VARCHAR(100),
             notes TEXT,
             status VARCHAR(20) DEFAULT 'متاحة'
         );
@@ -120,10 +131,10 @@ try {
         );
     ");
 
-    $pdo->exec("INSERT INTO vehicles (plate_number, type, model, color, department, status) VALUES
-        ('أ ب ج 1234', 'تويوتا', 'كامري 2022', 'أبيض', 'إدارة التشغيل', 'متاحة'),
-        ('د هـ و 5678', 'هيونداي', 'سوناتا 2023', 'فضي', 'قسم الإمداد', 'مسلمة'),
-        ('ر ز س 9012', 'فورد', 'تاورس 2021', 'أسود', 'الشؤون الإدارية', 'مسلمة')
+    $pdo->exec("INSERT INTO vehicles (plate_number, type, model, color, status) VALUES
+        ('أ ب ج 1234', 'تويوتا', 'كامري 2022', 'أبيض', 'متاحة'),
+        ('د هـ و 5678', 'هيونداي', 'سوناتا 2023', 'فضي', 'مسلمة'),
+        ('ر ز س 9012', 'فورد', 'تاورس 2021', 'أسود', 'مسلمة')
     ");
     $pdo->exec("INSERT INTO persons (name, phone) VALUES ('سارة العتيبي', '0559876543')");
     $pdo->exec("INSERT INTO custody (vehicle_id, person_id, custody_type, start_date, status) VALUES
@@ -137,8 +148,16 @@ try {
     $all = fetch_vehicles($pdo, null, null, null);
     assert_equals(3, count($all), 'بدون فلاتر يجب أن تُعاد كل المركبات الثلاث');
 
-    $bySearch = fetch_vehicles($pdo, 'كامري', null, null);
-    assert_equals(1, count($bySearch), 'البحث بـ "كامري" يجب أن يعيد مركبة واحدة فقط');
+    // البحث برقم اللوحة فقط (يجب ألا يطابق البحث بالموديل مثل "كامري")
+    $bySearchModel = fetch_vehicles($pdo, 'كامري', null, null);
+    assert_equals(0, count($bySearchModel), 'البحث بنص من الموديل "كامري" يجب ألا يعيد أي نتيجة بعد الآن');
+
+    $bySearchColor = fetch_vehicles($pdo, 'أبيض', null, null);
+    assert_equals(0, count($bySearchColor), 'البحث بنص من اللون "أبيض" يجب ألا يعيد أي نتيجة بعد الآن');
+
+    $bySearchPlate = fetch_vehicles($pdo, '1234', null, null);
+    assert_equals(1, count($bySearchPlate), 'البحث برقم اللوحة "1234" يجب أن يعيد مركبة واحدة');
+    assert_equals('أ ب ج 1234', $bySearchPlate[0]['plate_number'], 'المركبة الناتجة عن البحث صحيحة');
 
     $byType = fetch_vehicles($pdo, null, 'فورد', null);
     assert_equals(1, count($byType), 'فلتر النوع "فورد" يجب أن يعيد مركبة واحدة');
@@ -148,10 +167,10 @@ try {
 
     $vehicleWithHolder = array_values(array_filter($byStatus, fn($v) => $v['plate_number'] === 'د هـ و 5678'))[0];
     assert_equals('سارة العتيبي', $vehicleWithHolder['current_holder'], 'المستلم الحالي يجب أن يظهر بشكل صحيح عبر الربط');
-    assert_equals(1, (int) $vehicleWithHolder['current_custody_id'], 'رقم العهدة الحالية يجب أن يظهر بشكل صحيح');
+    assert_equals('مؤقتة', $vehicleWithHolder['current_custody_type'], 'نوع العهدة الحالية يجب أن يظهر بشكل صحيح');
 
     $vehicleReturned = array_values(array_filter($byStatus, fn($v) => $v['plate_number'] === 'ر ز س 9012'))[0];
-    assert_true($vehicleReturned['current_custody_id'] === null, 'مركبة بلا عهدة نشطة (رغم وجود عهدة سابقة مكتملة) يجب ألا يكون لها رقم عهدة حالية');
+    assert_true(empty($vehicleReturned['current_holder']), 'مركبة بلا عهدة نشطة يجب ألا يكون لها مستلم حالي');
 
     // اختبار منع الحذف
     assert_true(vehicle_has_custody_history($pdo, 2) === true, 'مركبة لها عهدة نشطة يجب أن تُمنع من الحذف');

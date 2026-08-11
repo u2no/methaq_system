@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS vehicles (
     type VARCHAR(50) NOT NULL,
     model VARCHAR(50) NOT NULL,
     color VARCHAR(30),
-    department VARCHAR(100), -- الإدارة / القسم المالك أو المستخدم للمركبة
     notes TEXT, -- ملاحظات إضافية عن المركبة
     status VARCHAR(20) DEFAULT 'متاحة' -- (متاحة / مسلمة)
 );
@@ -45,10 +44,10 @@ CREATE TABLE IF NOT EXISTS custody (
 -- --------------------------------------------------------
 
 -- بيانات مركبات تجريبية
-INSERT INTO vehicles (plate_number, type, model, color, department, notes, status) VALUES 
-('أ ب ج 1234', 'تويوتا', 'كامري 2022', 'أبيض', 'إدارة التشغيل', NULL, 'متاحة'),
-('د هـ و 5678', 'هيونداي', 'سوناتا 2023', 'فضي', 'قسم الإمداد', NULL, 'مسلمة'),
-('ر ز س 9012', 'فورد', 'تاورس 2021', 'أسود', 'الشؤون الإدارية', NULL, 'مسلمة');
+INSERT INTO vehicles (plate_number, type, model, color, notes, status) VALUES 
+('أ ب ج 1234', 'تويوتا', 'كامري 2022', 'أبيض', NULL, 'متاحة'),
+('د هـ و 5678', 'هيونداي', 'سوناتا 2023', 'فضي', NULL, 'مسلمة'),
+('ر ز س 9012', 'فورد', 'تاورس 2021', 'أسود', NULL, 'مسلمة');
 
 -- بيانات موظفين تجريبيين
 INSERT INTO persons (name, phone, status) VALUES 

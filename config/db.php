@@ -15,13 +15,10 @@ try {
 
     // ------------------------------------------------------------
     // ترقية بسيطة وآمنة لقاعدة البيانات (Migration):
-    // تضيف عمودي "الإدارة / القسم" و"ملاحظات" لجدول المركبات إن لم يكونا
-    // موجودين، حتى لا تنكسر قاعدة البيانات الموجودة لدى بقية الفريق.
+    // تضيف عمود "ملاحظات" لجدول المركبات إن لم يكن موجودًا،
+    // حتى لا تنكسر قاعدة البيانات الموجودة لدى بقية الفريق.
     // ------------------------------------------------------------
     $vehicleColumns = $pdo->query("PRAGMA table_info(vehicles)")->fetchAll(PDO::FETCH_COLUMN, 1);
-    if (!in_array('department', $vehicleColumns, true)) {
-        $pdo->exec("ALTER TABLE vehicles ADD COLUMN department VARCHAR(100)");
-    }
     if (!in_array('notes', $vehicleColumns, true)) {
         $pdo->exec("ALTER TABLE vehicles ADD COLUMN notes TEXT");
     }
