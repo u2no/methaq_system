@@ -27,7 +27,7 @@ $success = '';
 $person_id = $_GET['id'] ?? ($_POST['id'] ?? '');
 
 if (empty($person_id)) {
-    header('Location: person_list.php');
+    header('Location: persons.php');
     exit;
 }
 
@@ -39,7 +39,7 @@ $fetch->execute([$person_id]);
 $person = $fetch->fetch();
 
 if (!$person) {
-    header('Location: person_list.php?notfound=1');
+    header('Location: persons.php?notfound=1');
     exit;
 }
 

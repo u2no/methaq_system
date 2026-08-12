@@ -9,7 +9,7 @@ date_default_timezone_set('Asia/Riyadh');
 $person_id = $_GET['id'] ?? '';
 
 if (empty($person_id)) {
-    header('Location: person_list.php');
+    header('Location: persons.php');
     exit;
 }
 
@@ -21,7 +21,7 @@ $fetch->execute([$person_id]);
 $person = $fetch->fetch();
 
 if (!$person) {
-    header('Location: person_list.php?notfound=1');
+    header('Location: persons.php?notfound=1');
     exit;
 }
 
@@ -347,7 +347,7 @@ function custodyStatusLabel($row, $today)
                 <i class="fa-solid fa-pen"></i> تعديل البيانات
             </a>
 
-            <a href="person_list.php" class="back-btn">
+            <a href="persons.php" class="back-btn">
                 رجوع لقائمة الأشخاص
             </a>
 

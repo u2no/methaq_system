@@ -336,7 +336,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ✓ حفظ الشخص
                 </button>
 
-                <button type="button" class="cancel-btn" onclick="window.location.href='person_list.php'">
+                <button type="button" class="cancel-btn" onclick="window.location.href='persons.php'">
                     ✕ إلغاء
                 </button>
 
