@@ -13,11 +13,11 @@ $personsColumns = $pdo->query("PRAGMA table_info(persons)")->fetchAll();
 $personsColumnNames = array_column($personsColumns, 'name');
 
 if (!in_array('created_at', $personsColumnNames, true)) {
-    $pdo->exec("ALTER TABLE persons ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+  $pdo->exec("ALTER TABLE persons ADD COLUMN created_at DATETIME DEFAULT NULL");
 }
 
 if (!in_array('updated_at', $personsColumnNames, true)) {
-    $pdo->exec("ALTER TABLE persons ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+  $pdo->exec("ALTER TABLE persons ADD COLUMN updated_at DATETIME DEFAULT NULL");
 }
 
 
