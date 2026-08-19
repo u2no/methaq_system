@@ -52,12 +52,13 @@ assert_true(str_contains($sql, 'v.type = :type'), 'فلتر النوع يجب أ
 assert_equals('تويوتا', $params[':type'], 'قيمة فلتر النوع صحيحة');
 
 [$sql, $params] = build_vehicle_filters('', '', 'مسلمة');
-assert_true(str_contains($sql, 'v.status = :status'), 'فلتر الحالة يجب أن يظل يعمل بشكل مستقل عن البحث');
+assert_true(str_contains($sql, 'c.id IS NOT NULL'), 'فلتر "مسلمة" يجب أن يعتمد على وجود عهدة نشطة');
+assert_equals([], $params, 'فلتر الحالة المحسوبة لا يحتاج قيمة ربط');
 
 [$sql, $params] = build_vehicle_filters('4821', 'تويوتا', 'متاحة');
 assert_true(
-    str_contains($sql, 'AND') && count($params) === 3,
-    'الجمع بين البحث برقم اللوحة وفلترين يجب أن يولّد ثلاثة شروط مرتبطة بـ AND'
+    str_contains($sql, 'AND') && str_contains($sql, 'c.id IS NULL') && count($params) === 2,
+    'الجمع بين البحث برقم اللوحة وفلترين يجب أن يولّد ثلاثة شروط، منها الحالة المحسوبة'
 );
 
 // ------------------------------------------------------------------
@@ -103,8 +104,7 @@ try {
             type VARCHAR(50) NOT NULL,
             model VARCHAR(50) NOT NULL,
             color VARCHAR(30),
-            notes TEXT,
-            status VARCHAR(20) DEFAULT 'متاحة'
+            notes TEXT
         );
     ");
     $pdo->exec("
@@ -131,10 +131,10 @@ try {
         );
     ");
 
-    $pdo->exec("INSERT INTO vehicles (plate_number, type, model, color, status) VALUES
-        ('أ ب ج 1234', 'تويوتا', 'كامري 2022', 'أبيض', 'متاحة'),
-        ('د هـ و 5678', 'هيونداي', 'سوناتا 2023', 'فضي', 'مسلمة'),
-        ('ر ز س 9012', 'فورد', 'تاورس 2021', 'أسود', 'مسلمة')
+    $pdo->exec("INSERT INTO vehicles (plate_number, type, model, color) VALUES
+        ('أ ب ج 1234', 'تويوتا', 'كامري 2022', 'أبيض'),
+        ('د هـ و 5678', 'هيونداي', 'سوناتا 2023', 'فضي'),
+        ('ر ز س 9012', 'فورد', 'تاورس 2021', 'أسود')
     ");
     $pdo->exec("INSERT INTO persons (name, phone) VALUES ('سارة العتيبي', '0559876543')");
     $pdo->exec("INSERT INTO custody (vehicle_id, person_id, custody_type, start_date, status) VALUES
@@ -163,13 +163,16 @@ try {
     assert_equals(1, count($byType), 'فلتر النوع "فورد" يجب أن يعيد مركبة واحدة');
 
     $byStatus = fetch_vehicles($pdo, null, null, 'مسلمة');
-    assert_equals(2, count($byStatus), 'فلتر الحالة "مسلمة" يجب أن يعيد مركبتين');
+    assert_equals(1, count($byStatus), 'فلتر الحالة "مسلمة" يجب أن يعيد المركبة ذات العهدة النشطة فقط');
 
     $vehicleWithHolder = array_values(array_filter($byStatus, fn($v) => $v['plate_number'] === 'د هـ و 5678'))[0];
     assert_equals('سارة العتيبي', $vehicleWithHolder['current_holder'], 'المستلم الحالي يجب أن يظهر بشكل صحيح عبر الربط');
     assert_equals('مؤقتة', $vehicleWithHolder['current_custody_type'], 'نوع العهدة الحالية يجب أن يظهر بشكل صحيح');
 
-    $vehicleReturned = array_values(array_filter($byStatus, fn($v) => $v['plate_number'] === 'ر ز س 9012'))[0];
+    $byAvailableStatus = fetch_vehicles($pdo, null, null, 'متاحة');
+    assert_equals(2, count($byAvailableStatus), 'فلتر الحالة "متاحة" يجب أن يعيد المركبتين بلا عهدة نشطة');
+
+    $vehicleReturned = array_values(array_filter($byAvailableStatus, fn($v) => $v['plate_number'] === 'ر ز س 9012'))[0];
     assert_true(empty($vehicleReturned['current_holder']), 'مركبة بلا عهدة نشطة يجب ألا يكون لها مستلم حالي');
 
     // اختبار منع الحذف

@@ -6,21 +6,6 @@ require_once __DIR__ . '/config/db.php';
 
 date_default_timezone_set('Asia/Riyadh');
 
-
-/* التأكد من وجود عمودي created_at و updated_at */
-
-$personsColumns = $pdo->query("PRAGMA table_info(persons)")->fetchAll();
-$personsColumnNames = array_column($personsColumns, 'name');
-
-if (!in_array('created_at', $personsColumnNames, true)) {
-    $pdo->exec("ALTER TABLE persons ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
-}
-
-if (!in_array('updated_at', $personsColumnNames, true)) {
-    $pdo->exec("ALTER TABLE persons ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP");
-}
-
-
 $error = '';
 $success = '';
 
@@ -99,8 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     SET
                         name = :name,
                         phone = :phone,
-                        status = :status,
-                        updated_at = CURRENT_TIMESTAMP
+                        status = :status
                     WHERE id = :id
                 ");
 

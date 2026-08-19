@@ -24,27 +24,6 @@ $results = [];
 $selectedAssignment = null;
 
 
-/* verify deduction fields in custody tables */
-
-$columnsQuery = $pdo->query("PRAGMA table_info(custody)");
-$columns = $columnsQuery->fetchAll();
-$columnNames = array_column($columns, 'name');
-
-if (!in_array('has_deduction', $columnNames, true)) {
-    $pdo->exec("
-        ALTER TABLE custody
-        ADD COLUMN has_deduction INTEGER NOT NULL DEFAULT 0
-    ");
-}
-
-if (!in_array('decision_reference', $columnNames, true)) {
-    $pdo->exec("
-        ALTER TABLE custody
-        ADD COLUMN decision_reference VARCHAR(100)
-    ");
-}
-
-
 /* success message */
 
 if (
@@ -60,8 +39,6 @@ if (
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $assignment_id = $_POST['assignment_id'] ?? '';
-    $has_deduction = $_POST['has_deduction'] ?? '0';
-    $decision_reference = trim($_POST['decision_reference'] ?? '');
 
     if (empty($assignment_id)) {
 
@@ -96,67 +73,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
 
-            /* deduction for perm custody */
-
-            if ($assignment['custody_type'] === 'دائمة') {
-
-                $has_deduction =
-                    $has_deduction === '1'
-                    ? 1
-                    : 0;
-
-                if (
-                    $has_deduction === 0 ||
-                    $decision_reference === ''
-                ) {
-                    $decision_reference = null;
-                }
-
-            } else {
-
-                $has_deduction = 0;
-                $decision_reference = null;
-
-            }
-
-
             /* update custody as return */
 
             $update = $pdo->prepare("
                 UPDATE custody
                 SET
                     actual_return_date = :actual_return_date,
-                    status = 'مكتملة',
-                    has_deduction = :has_deduction,
-                    decision_reference = :decision_reference
+                    status = 'مكتملة'
                 WHERE id = :id
             ");
 
             $update->execute([
                 ':actual_return_date' => $today,
-                ':has_deduction' => $has_deduction,
-                ':decision_reference' => $decision_reference,
                 ':id' => $assignment_id
             ]);
-
-
-            /* set vehicle status to available */
-
-            $updateVehicle = $pdo->prepare("
-                UPDATE vehicles
-                SET status = 'متاحة'
-                WHERE id = ?
-            ");
-
-            $updateVehicle->execute([
-                $assignment['vehicle_id']
-            ]);
-
 
             $pdo->commit();
 
             header(
-                'Location: assignment_receive.php?returned=1'
+                'Location: assignment_return.php?returned=1'
             );
 
             exit;
@@ -188,7 +123,15 @@ if ($search !== '') {
             c.custody_type,
             c.start_date,
             c.expected_return_date,
-            c.status,
+            CASE
+                WHEN
+                    c.custody_type = 'مؤقتة'
+                    AND c.expected_return_date IS NOT NULL
+                    AND c.expected_return_date <> ''
+                    AND date(c.expected_return_date) < date(:today_status)
+                THEN 'متأخرة'
+                ELSE 'نشطة'
+            END AS display_status,
             p.name,
             p.phone,
             v.type,
@@ -212,7 +155,8 @@ if ($search !== '') {
 
     $searchQuery->execute([
         ':name_search' => '%' . $search . '%',
-        ':phone_search' => '%' . $search . '%'
+        ':phone_search' => '%' . $search . '%',
+        ':today_status' => $today
     ]);
 
     $results = $searchQuery->fetchAll();
@@ -230,7 +174,15 @@ if (!empty($selected_id)) {
             c.custody_type,
             c.start_date,
             c.expected_return_date,
-            c.status,
+            CASE
+                WHEN
+                    c.custody_type = 'مؤقتة'
+                    AND c.expected_return_date IS NOT NULL
+                    AND c.expected_return_date <> ''
+                    AND date(c.expected_return_date) < date(?)
+                THEN 'متأخرة'
+                ELSE 'نشطة'
+            END AS display_status,
             p.name,
             p.phone,
             v.type,
@@ -248,6 +200,7 @@ if (!empty($selected_id)) {
     ");
 
     $selectedQuery->execute([
+        $today,
         $selected_id
     ]);
 
@@ -594,80 +547,6 @@ include __DIR__ . '/includes/header.php';
 }
 
 
-/* deduction information */
-
-.deduction-box {
-    padding: 16px;
-    border: 1px solid #73aef8;
-    border-radius: 6px;
-    background-color: #f4f9ff;
-}
-
-.deduction-title {
-    margin-bottom: 15px;
-    color: #1457c5;
-    font-size: 15px;
-    font-weight: bold;
-}
-
-.deduction-content {
-    display: grid;
-    grid-template-columns: 1fr 1.3fr;
-    gap: 30px;
-    align-items: end;
-}
-
-.deduction-question {
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.required {
-    color: red;
-}
-
-.radio-options {
-    display: flex;
-    align-items: center;
-    gap: 28px;
-    margin-top: 13px;
-}
-
-.radio-option {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-}
-
-.radio-option input {
-    width: 18px;
-    height: 18px;
-    accent-color: #1457c5;
-}
-
-.reference-group label {
-    display: block;
-    margin-bottom: 7px;
-    font-size: 12px;
-    font-weight: bold;
-}
-
-.reference-input {
-    width: 100%;
-    height: 42px;
-    padding: 0 12px;
-    border: 1px solid #bdcbe0;
-    border-radius: 5px;
-    outline: none;
-    font-family: Arial, Tahoma, sans-serif;
-}
-
-.reference-input:focus {
-    border-color: #1457c5;
-}
-
-
 /* information message */
 
 .info-box {
@@ -722,10 +601,6 @@ include __DIR__ . '/includes/header.php';
 
     .details-grid {
         grid-template-columns: repeat(3, 1fr);
-    }
-
-    .deduction-content {
-        grid-template-columns: 1fr;
     }
 
 }
@@ -919,7 +794,7 @@ include __DIR__ . '/includes/sidebar.php';
                             <th>المركبة</th>
                             <th>نوع العهدة</th>
                             <th>تاريخ التسليم</th>
-                            <th>تاريخ الاستحقاق</th>
+                            <th>تاريخ الاستلام</th>
                             <th>حالة العهدة</th>
                             <th>اختيار</th>
                         </tr>
@@ -999,7 +874,7 @@ include __DIR__ . '/includes/sidebar.php';
                                     <span class="status-badge">
                                         <?php
                                         echo htmlspecialchars(
-                                            $row['status'] ?: 'نشطة',
+                                            $row['display_status'] ?: 'نشطة',
                                             ENT_QUOTES,
                                             'UTF-8'
                                         );
@@ -1144,7 +1019,7 @@ include __DIR__ . '/includes/sidebar.php';
 
             <div class="detail-item">
                 <span class="detail-label">
-                    تاريخ الاستحقاق
+                    تاريخ الاستلام
                 </span>
                 <span class="detail-value">
                     <?php
@@ -1168,7 +1043,7 @@ include __DIR__ . '/includes/sidebar.php';
                     <span class="status-badge">
                         <?php
                         echo htmlspecialchars(
-                            $selectedAssignment['status'] ?: 'نشطة',
+                            $selectedAssignment['display_status'] ?: 'نشطة',
                             ENT_QUOTES,
                             'UTF-8'
                         );
@@ -1204,84 +1079,6 @@ include __DIR__ . '/includes/sidebar.php';
                     ?>"
                 >
 
-
-                <!-- deduction information for perm custody -->
-
-                <?php
-                if (
-                    $selectedAssignment['custody_type'] === 'دائمة'
-                ):
-                ?>
-
-                    <div class="deduction-box">
-
-                        <div class="deduction-title">
-                            معلومات الحسم
-                            (للعهدة الدائمة فقط)
-                        </div>
-
-                        <div class="deduction-content">
-
-                            <div>
-
-                                <div class="deduction-question">
-                                    هل يتم الحسم؟
-                                    <span class="required">*</span>
-                                </div>
-
-                                <div class="radio-options">
-
-                                    <label class="radio-option">
-                                        <input
-                                            type="radio"
-                                            name="has_deduction"
-                                            value="1"
-                                            checked
-                                            onchange="toggleDecisionReference()"
-                                        >
-                                        نعم
-                                    </label>
-
-                                    <label class="radio-option">
-                                        <input
-                                            type="radio"
-                                            name="has_deduction"
-                                            value="0"
-                                            onchange="toggleDecisionReference()"
-                                        >
-                                        لا
-                                    </label>
-
-                                </div>
-
-                            </div>
-
-                            <div
-                                class="reference-group"
-                                id="reference_group"
-                            >
-
-                                <label>
-                                    رقم القرار المرجعي
-                                </label>
-
-                                <input
-                                    type="text"
-                                    name="decision_reference"
-                                    id="decision_reference"
-                                    class="reference-input"
-                                    placeholder="أدخل رقم القرار المرجعي"
-                                >
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                <?php endif; ?>
-
-
                 <div class="info-box">
                     سيتم تنفيذ عملية استرجاع العهدة وتحديث حالة المركبة والعهدة بعد الحفظ والتأكيد
                 </div>
@@ -1292,7 +1089,7 @@ include __DIR__ . '/includes/sidebar.php';
                     <button
                         type="button"
                         class="cancel-button"
-                        onclick="window.location.href='assignment_receive.php'"
+                        onclick="window.location.href='assignment_return.php'"
                     >
                          إلغاء
                     </button>
@@ -1311,53 +1108,6 @@ include __DIR__ . '/includes/sidebar.php';
         <?php endif; ?>
 
     </section>
-
-
-<script>
-
-function toggleDecisionReference() {
-
-    const selected =
-        document.querySelector(
-            'input[name="has_deduction"]:checked'
-        );
-
-    const referenceGroup =
-        document.getElementById(
-            'reference_group'
-        );
-
-    const referenceInput =
-        document.getElementById(
-            'decision_reference'
-        );
-
-    if (
-        !selected ||
-        !referenceGroup ||
-        !referenceInput
-    ) {
-        return;
-    }
-
-    if (selected.value === '1') {
-        referenceGroup.style.display = 'block';
-    } else {
-        referenceGroup.style.display = 'none';
-        referenceInput.value = '';
-    }
-
-}
-
-
-document.addEventListener(
-    'DOMContentLoaded',
-    function () {
-        toggleDecisionReference();
-    }
-);
-
-</script>
 
 
 <?php

@@ -2,6 +2,15 @@
 
 session_start();
 
+/* Keep PHP warnings/notices out of CSV downloads. */
+$isCsvExport = isset($_GET['export']) && $_GET['export'] === 'csv';
+$csvBufferLevel = ob_get_level();
+
+if ($isCsvExport) {
+    ob_start();
+    ini_set('display_errors', '0');
+}
+
 require_once __DIR__ . '/config/db.php';
 
 date_default_timezone_set('Asia/Riyadh');
@@ -11,6 +20,10 @@ $today = date('Y-m-d');
 $search = trim($_GET['q'] ?? '');
 $custody_type = trim($_GET['custody_type'] ?? '');
 $status_filter = trim($_GET['status'] ?? '');
+$success = (
+    isset($_GET['updated']) &&
+    $_GET['updated'] === '1'
+) ? 'تم تعديل بيانات العهدة بنجاح' : '';
 
 
 /* filtering conditions */
@@ -93,6 +106,8 @@ $sql = "
         c.custody_type,
         c.start_date,
         c.expected_return_date,
+        c.has_deduction,
+        c.decision_reference,
         c.notes,
 
         p.name,
@@ -133,15 +148,23 @@ $assignments = $query->fetchAll();
 
 /* export results to CSV */
 
-if (isset($_GET['export']) && $_GET['export'] === 'csv') {
+if ($isCsvExport) {
 
     $filename = 'active_custody_' . date('Y-m-d') . '.csv';
 
+    /* Remove anything buffered before the CSV headers (warnings, spaces, etc.). */
+    if (ob_get_level() > $csvBufferLevel) {
+        ob_end_clean();
+    }
+
     header('Content-Type: text/csv; charset=UTF-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    header('Pragma: no-cache');
 
     $output = fopen('php://output', 'w');
 
+    /* UTF-8 BOM so Arabic displays correctly in Excel. */
     fwrite($output, "\xEF\xBB\xBF");
 
     fputcsv($output, [
@@ -151,11 +174,13 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
         'نوع المركبة',
         'رقم اللوحة',
         'نوع العهدة',
+        'تاريخ التسليم',
         'تاريخ الاستلام',
-        'تاريخ الاستحقاق',
+        'هل تم الحسم؟',
+        'رقم القرار المرجعي',
         'الحالة',
         'ملاحظات'
-    ]);
+    ], ',', '"', '', "\r\n");
 
     foreach ($assignments as $index => $row) {
 
@@ -168,9 +193,11 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
             $row['custody_type'],
             $row['start_date'],
             $row['expected_return_date'] ?: '-',
+            $row['has_deduction'] == 1 ? 'نعم' : 'لا',
+            $row['decision_reference'] ?: '-',
             $row['display_status'],
             $row['notes'] ?: '-'
-        ]);
+        ], ',', '"', '', "\r\n");
 
     }
 
@@ -267,6 +294,19 @@ include __DIR__ . '/includes/header.php';
     border-radius: 8px;
     padding: 18px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.025);
+}
+
+
+/* success message */
+
+.success-message {
+    padding: 13px 16px;
+    margin-bottom: 18px;
+    background-color: #ecfdf3;
+    border: 1px solid #bbf7d0;
+    border-radius: 7px;
+    color: #15803d;
+    font-size: 13px;
 }
 
 
@@ -386,7 +426,7 @@ include __DIR__ . '/includes/header.php';
 
 .active-table {
     width: 100%;
-    min-width: 1000px;
+    min-width: 1500px;
     margin: 0;
     border-collapse: collapse;
 }
@@ -443,6 +483,50 @@ include __DIR__ . '/includes/header.php';
 .status-late {
     background-color: #fee2e2;
     color: #b91c1c;
+}
+
+
+.deduction-badge {
+    display: inline-block;
+    min-width: 52px;
+    padding: 5px 10px;
+    border-radius: 14px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+
+.deduction-yes {
+    background-color: #fff3cd;
+    color: #8a6500;
+}
+
+
+.deduction-no {
+    background-color: #e9ecef;
+    color: #495057;
+}
+
+
+.edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 11px;
+    background-color: #eff6ff;
+    border: 1px solid #93c5fd;
+    border-radius: 5px;
+    color: #1d4ed8;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+
+.edit-btn:hover {
+    background-color: #dbeafe;
+    color: #1e40af;
 }
 
 
@@ -529,6 +613,16 @@ include __DIR__ . '/includes/sidebar.php';
         </div>
 
     </div>
+
+
+    <?php if ($success !== ''): ?>
+
+        <div class="success-message">
+            ✓
+            <?php echo htmlspecialchars($success, ENT_QUOTES, 'UTF-8'); ?>
+        </div>
+
+    <?php endif; ?>
 
 
     <! -- tables, filtering, and export -- >
@@ -661,9 +755,13 @@ include __DIR__ . '/includes/sidebar.php';
                         <th>المركبة</th>
                         <th>رقم اللوحة</th>
                         <th>نوع العهدة</th>
+                        <th>تاريخ التسليم</th>
                         <th>تاريخ الاستلام</th>
-                        <th>تاريخ الاستحقاق</th>
+                        <th>هل تم الحسم؟</th>
+                        <th>رقم القرار المرجعي</th>
                         <th>الحالة</th>
+                        <th>ملاحظات</th>
+                        <th>الإجراء</th>
 
                     </tr>
 
@@ -676,7 +774,7 @@ include __DIR__ . '/includes/sidebar.php';
 
                     <tr>
                         <td
-                            colspan="9"
+                            colspan="13"
                             class="empty-row"
                         >
                             لا توجد عهد نشطة مطابقة للتصفية الحالية
@@ -770,6 +868,40 @@ include __DIR__ . '/includes/sidebar.php';
 
                             <td>
 
+                                <?php if ($row['has_deduction'] == 1): ?>
+
+                                    <span class="deduction-badge deduction-yes">
+                                        نعم
+                                    </span>
+
+                                <?php else: ?>
+
+                                    <span class="deduction-badge deduction-no">
+                                        لا
+                                    </span>
+
+                                <?php endif; ?>
+
+                            </td>
+
+
+                            <td>
+                                <?php
+                                if (!empty($row['decision_reference'])) {
+                                    echo htmlspecialchars(
+                                        $row['decision_reference'],
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    );
+                                } else {
+                                    echo '-';
+                                }
+                                ?>
+                            </td>
+
+
+                            <td>
+
                                 <?php if ($row['display_status'] === 'متأخرة'): ?>
 
                                     <span class="status-badge status-late">
@@ -784,6 +916,32 @@ include __DIR__ . '/includes/sidebar.php';
 
                                 <?php endif; ?>
 
+                            </td>
+
+
+                            <td>
+                                <?php
+                                if (!empty($row['notes'])) {
+                                    echo htmlspecialchars(
+                                        $row['notes'],
+                                        ENT_QUOTES,
+                                        'UTF-8'
+                                    );
+                                } else {
+                                    echo '-';
+                                }
+                                ?>
+                            </td>
+
+
+                            <td>
+                                <a
+                                    href="assignment_edit.php?id=<?php echo urlencode($row['id']); ?>"
+                                    class="edit-btn"
+                                >
+                                    <i class="fa-solid fa-pen"></i>
+                                    تعديل
+                                </a>
                             </td>
 
                         </tr>
@@ -804,4 +962,3 @@ include __DIR__ . '/includes/sidebar.php';
 
 <?php
 include __DIR__ . '/includes/footer.php';
-?>

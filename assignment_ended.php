@@ -8,7 +8,6 @@ date_default_timezone_set('Asia/Riyadh');
 
 $search = trim($_GET['q'] ?? '');
 $custody_type = trim($_GET['custody_type'] ?? '');
-$deduction_filter = trim($_GET['deduction'] ?? '');
 
 
 /* filtering conditions */
@@ -46,19 +45,6 @@ if (
 
     $conditions[] = "c.custody_type = :custody_type";
     $params[':custody_type'] = $custody_type;
-
-}
-
-
-/* filter by deduction status */
-
-if ($deduction_filter === 'yes') {
-
-    $conditions[] = "c.has_deduction = 1";
-
-} elseif ($deduction_filter === 'no') {
-
-    $conditions[] = "c.has_deduction = 0";
 
 }
 
@@ -151,12 +137,17 @@ if (
             'نوع المركبة',
             'رقم اللوحة',
             'نوع العهدة',
+            'تاريخ التسليم',
             'تاريخ الاستلام',
-            'تاريخ الاسترجاع',
             'هل تم الحسم؟',
             'رقم القرار المرجعي',
+            'الحالة',
             'ملاحظات'
-        ]
+        ],
+        ',',
+        '"',
+        '',
+        "\r\n"
     );
 
 
@@ -180,9 +171,15 @@ if (
                     : 'لا',
                 $row['decision_reference']
                     ?: '-',
+                $row['status']
+                    ?: 'مكتملة',
                 $row['notes']
                     ?: '-'
-            ]
+            ],
+            ',',
+            '"',
+            '',
+            "\r\n"
         );
 
     }
@@ -531,7 +528,7 @@ include __DIR__ . '/includes/header.php';
 
     width: 100%;
 
-    min-width: 1250px;
+    min-width: 1400px;
 
     margin: 0;
 
@@ -725,7 +722,7 @@ include __DIR__ . '/includes/sidebar.php';
 
 
             <h5 class="fw-bold text-dark">
-                العهد المنتهية
+                العهد المستلمة
             </h5>
 
 
@@ -819,43 +816,6 @@ include __DIR__ . '/includes/sidebar.php';
                 </select>
 
 
-                <select
-                    name="deduction"
-                    class="filter-select"
-                >
-
-                    <option value="">
-                        جميع حالات الحسم
-                    </option>
-
-
-                    <option
-                        value="yes"
-                        <?php
-                        echo $deduction_filter === 'yes'
-                            ? 'selected'
-                            : '';
-                        ?>
-                    >
-                        يوجد حسم
-                    </option>
-
-
-                    <option
-                        value="no"
-                        <?php
-                        echo $deduction_filter === 'no'
-                            ? 'selected'
-                            : '';
-                        ?>
-                    >
-                        لا يوجد حسم
-                    </option>
-
-
-                </select>
-
-
                 <button
                     type="submit"
                     class="filter-btn"
@@ -882,8 +842,6 @@ include __DIR__ . '/includes/sidebar.php';
                     echo urlencode($search);
                 ?>&custody_type=<?php
                     echo urlencode($custody_type);
-                ?>&deduction=<?php
-                    echo urlencode($deduction_filter);
                 ?>&export=csv"
                 class="export-btn"
             >
@@ -935,11 +893,11 @@ include __DIR__ . '/includes/sidebar.php';
                         </th>
 
                         <th>
-                            تاريخ الاستلام
+                            تاريخ التسليم
                         </th>
 
                         <th>
-                            تاريخ الاسترجاع
+                            تاريخ الاستلام
                         </th>
 
                         <th>
@@ -948,6 +906,10 @@ include __DIR__ . '/includes/sidebar.php';
 
                         <th>
                             رقم القرار المرجعي
+                        </th>
+
+                        <th>
+                            الحالة
                         </th>
 
                         <th>
@@ -968,10 +930,10 @@ include __DIR__ . '/includes/sidebar.php';
                     <tr>
 
                         <td
-                            colspan="11"
+                            colspan="12"
                             class="empty-row"
                         >
-                            لا توجد عهد منتهية مطابقة للتصفية الحالية
+                            لا توجد عهد مستلمة مطابقة للتصفية الحالية
                         </td>
 
                     </tr>
@@ -1140,6 +1102,19 @@ include __DIR__ . '/includes/sidebar.php';
 
                                 }
 
+                                ?>
+
+                            </td>
+
+
+                            <td>
+
+                                <?php
+                                echo htmlspecialchars(
+                                    $row['status'] ?: 'مكتملة',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
                                 ?>
 
                             </td>

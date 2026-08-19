@@ -279,7 +279,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
 
 
         <!-- =====================================================
-             العهد المنتهية
+             العهد المستلمة
         ====================================================== -->
 
         <li class="mb-1">
@@ -322,7 +322,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
                 </svg>
 
                 <span>
-                    العهد المنتهية
+                    العهد المستلمة
                 </span>
 
             </a>
@@ -383,7 +383,7 @@ $currentPage = basename($_SERVER['PHP_SELF']);
     <div>
 
         <a
-            href="#"
+            href="logout.php"
             class="
                 btn
                 btn-sm

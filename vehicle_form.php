@@ -104,8 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
 
             $stmt = $pdo->prepare("
-                INSERT INTO vehicles (plate_number, type, model, color, notes, status)
-                VALUES (:plate_number, :type, :model, :color, :notes, 'متاحة')
+                INSERT INTO vehicles (plate_number, type, model, color, notes)
+                VALUES (:plate_number, :type, :model, :color, :notes)
             ");
 
             $stmt->execute([

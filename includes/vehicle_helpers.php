@@ -35,9 +35,10 @@ function build_vehicle_filters(?string $search, ?string $type, ?string $status):
     }
 
     $status = trim((string) $status);
-    if ($status !== '' && $status !== 'الكل' && $status !== 'كل الحالات') {
-        $conditions[] = 'v.status = :status';
-        $params[':status'] = $status;
+    if ($status === 'متاحة') {
+        $conditions[] = 'c.id IS NULL';
+    } elseif ($status === 'مسلمة') {
+        $conditions[] = 'c.id IS NOT NULL';
     }
 
     $whereSql = $conditions ? ('WHERE ' . implode(' AND ', $conditions)) : '';
@@ -67,7 +68,10 @@ function fetch_vehicles(PDO $pdo, ?string $search, ?string $type, ?string $statu
             v.model,
             v.color,
             v.notes,
-            v.status,
+            CASE
+                WHEN c.id IS NOT NULL THEN 'مسلمة'
+                ELSE 'متاحة'
+            END AS status,
             p.name AS current_holder,
             c.custody_type AS current_custody_type
         FROM vehicles v
@@ -95,7 +99,16 @@ function fetch_vehicle_by_id(PDO $pdo, int $id): ?array
 {
     $stmt = $pdo->prepare("
         SELECT
-            v.*,
+            v.id,
+            v.plate_number,
+            v.type,
+            v.model,
+            v.color,
+            v.notes,
+            CASE
+                WHEN c.id IS NOT NULL THEN 'مسلمة'
+                ELSE 'متاحة'
+            END AS status,
             p.name AS current_holder,
             p.phone AS current_holder_phone,
             c.custody_type AS current_custody_type,
@@ -118,13 +131,31 @@ function fetch_vehicle_by_id(PDO $pdo, int $id): ?array
 function fetch_vehicle_custody_history(PDO $pdo, int $vehicleId): array
 {
     $stmt = $pdo->prepare("
-        SELECT c.*, p.name AS person_name
+        SELECT
+            c.*,
+            p.name AS person_name,
+            CASE
+                WHEN
+                    c.actual_return_date IS NOT NULL
+                    AND c.actual_return_date <> ''
+                THEN 'مكتملة'
+                WHEN
+                    c.custody_type = 'مؤقتة'
+                    AND c.expected_return_date IS NOT NULL
+                    AND c.expected_return_date <> ''
+                    AND date(c.expected_return_date) < date(:today_status)
+                THEN 'متأخرة'
+                ELSE 'نشطة'
+            END AS display_status
         FROM custody c
         JOIN persons p ON p.id = c.person_id
         WHERE c.vehicle_id = :vehicle_id
         ORDER BY c.start_date DESC, c.id DESC
     ");
-    $stmt->execute([':vehicle_id' => $vehicleId]);
+    $stmt->execute([
+        ':vehicle_id' => $vehicleId,
+        ':today_status' => date('Y-m-d')
+    ]);
     return $stmt->fetchAll();
 }
 

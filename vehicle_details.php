@@ -367,7 +367,7 @@ include __DIR__ . '/includes/sidebar.php';
                                         <span class="empty-value">—</span>
                                     <?php endif; ?>
                                 </td>
-                                <td><?php echo htmlspecialchars($record['status'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                <td><?php echo htmlspecialchars($record['display_status'], ENT_QUOTES, 'UTF-8'); ?></td>
                             </tr>
 
                         <?php endforeach; ?>

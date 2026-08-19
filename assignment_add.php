@@ -19,6 +19,8 @@ $assignment_type = '';
 $start_date = $today;
 $due_date = '';
 $notes = '';
+$has_deduction = '0';
+$decision_reference = '';
 
 
 /* Success message after saving */
@@ -40,6 +42,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $start_date = $_POST['start_date'] ?? '';
     $due_date = $_POST['due_date'] ?? '';
     $notes = trim($_POST['notes'] ?? '');
+    $has_deduction = $_POST['has_deduction'] ?? '0';
+    $decision_reference = trim($_POST['decision_reference'] ?? '');
 
 
     if (
@@ -67,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         empty($due_date)
     ) {
 
-        $error = 'يرجى تحديد تاريخ التسليم للعهدة المؤقتة';
+        $error = 'يرجى تحديد تاريخ الاستلام للعهدة المؤقتة';
 
     }
 
@@ -77,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $due_date < $start_date
     ) {
 
-        $error = 'تاريخ التسليم لا يمكن أن يكون قبل تاريخ الاستلام';
+        $error = 'تاريخ الاستلام لا يمكن أن يكون قبل تاريخ التسليم';
 
     }
 
@@ -86,6 +90,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($assignment_type === 'permanent') {
 
             $due_date = null;
+
+            $has_deduction =
+                $has_deduction === '1'
+                ? 1
+                : 0;
+
+            if (
+                $has_deduction === 0 ||
+                $decision_reference === ''
+            ) {
+                $decision_reference = null;
+            }
+
+        } else {
+
+            $has_deduction = 0;
+            $decision_reference = null;
 
         }
 
@@ -215,6 +236,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     start_date,
                     expected_return_date,
                     actual_return_date,
+                    has_deduction,
+                    decision_reference,
                     notes,
                     status
                 )
@@ -227,6 +250,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     :start_date,
                     :expected_return_date,
                     NULL,
+                    :has_deduction,
+                    :decision_reference,
                     :notes,
                     'نشطة'
                 )
@@ -253,26 +278,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ':expected_return_date' =>
                     $due_date,
 
+                ':has_deduction' =>
+                    $has_deduction,
+
+                ':decision_reference' =>
+                    $decision_reference,
+
                 ':notes' =>
                     $notes
 
             ]);
-
-
-            /* update vehicle status */
-
-            $updateVehicleStatus = $pdo->prepare("
-                UPDATE vehicles
-
-                SET status = 'مسلمة'
-
-                WHERE id = ?
-            ");
-
-            $updateVehicleStatus->execute([
-                $vehicle_id
-            ]);
-
 
             $pdo->commit();
 
@@ -351,9 +366,7 @@ $vehiclesQuery = $pdo->query("
 
     FROM vehicles v
 
-    WHERE v.status = 'متاحة'
-
-    AND NOT EXISTS (
+    WHERE NOT EXISTS (
 
         SELECT 1
 
@@ -643,6 +656,146 @@ include __DIR__ . '/includes/header.php';
 }
 
 
+/* deduction information for permanent custody */
+
+.permanent-box {
+
+    display: none;
+
+    padding: 20px;
+
+    margin-bottom: 25px;
+
+    background-color: #f2f7fd;
+
+    border: 1px solid #d5e5f5;
+
+    border-radius: 7px;
+
+}
+
+
+.deduction-title {
+
+    margin-bottom: 18px;
+
+    color: #1457c5;
+
+    font-size: 15px;
+
+    font-weight: bold;
+
+}
+
+
+.deduction-content {
+
+    display: grid;
+
+    grid-template-columns: 1fr 1.3fr;
+
+    gap: 30px;
+
+    align-items: end;
+
+}
+
+
+.deduction-question {
+
+    color: #243b53;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+}
+
+
+.radio-options {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 28px;
+
+    margin-top: 13px;
+
+}
+
+
+.radio-option {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 6px;
+
+    color: #243b53;
+
+    font-size: 14px;
+
+}
+
+
+.radio-option input {
+
+    width: 18px;
+
+    height: 18px;
+
+    accent-color: #1457c5;
+
+}
+
+
+.reference-group label {
+
+    display: block;
+
+    margin-bottom: 8px;
+
+    color: #243b53;
+
+    font-size: 14px;
+
+    font-weight: bold;
+
+}
+
+
+.reference-input {
+
+    width: 100%;
+
+    padding: 13px;
+
+    background-color: white;
+
+    border: 1px solid #d9e2ec;
+
+    border-radius: 6px;
+
+    outline: none;
+
+    color: #243b53;
+
+    font-family: Arial, Tahoma, sans-serif;
+
+    font-size: 14px;
+
+}
+
+
+.reference-input:focus {
+
+    border-color: #2563eb;
+
+}
+
+
 /* notes */
 
 textarea {
@@ -777,6 +930,13 @@ textarea {
     .form-row {
 
         flex-direction: column;
+
+    }
+
+
+    .deduction-content {
+
+        grid-template-columns: 1fr;
 
     }
 
@@ -990,7 +1150,7 @@ include __DIR__ . '/includes/sidebar.php';
                         name="assignment_type"
                         id="assignment_type"
                         required
-                        onchange="toggleDeliveryDate()"
+                        onchange="toggleDeliveryDate(); togglePermanentFields()"
                     >
 
                         <option value="">
@@ -1151,7 +1311,7 @@ include __DIR__ . '/includes/sidebar.php';
 
                     <label>
 
-                        تاريخ الاستلام
+                        تاريخ التسليم
 
                         <span class="required">
                             *
@@ -1198,7 +1358,7 @@ include __DIR__ . '/includes/sidebar.php';
 
                     <label>
 
-                        تاريخ التسليم
+                        تاريخ الاستلام
 
                         <span class="required">
                             *
@@ -1226,6 +1386,92 @@ include __DIR__ . '/includes/sidebar.php';
                         ?>"
 
                     >
+
+                </div>
+
+            </div>
+
+
+            <div
+                class="permanent-box"
+                id="deduction_box"
+            >
+
+                <div class="deduction-title">
+                    معلومات الحسم
+                    (للعهدة الدائمة فقط)
+                </div>
+
+                <div class="deduction-content">
+
+                    <div>
+
+                        <div class="deduction-question">
+                            هل يتم الحسم؟
+                            <span class="required">*</span>
+                        </div>
+
+                        <div class="radio-options">
+
+                            <label class="radio-option">
+                                <input
+                                    type="radio"
+                                    name="has_deduction"
+                                    value="1"
+                                    <?php
+                                    if ((string)$has_deduction === '1') {
+                                        echo 'checked';
+                                    }
+                                    ?>
+                                    onchange="toggleDecisionReference()"
+                                >
+                                نعم
+                            </label>
+
+                            <label class="radio-option">
+                                <input
+                                    type="radio"
+                                    name="has_deduction"
+                                    value="0"
+                                    <?php
+                                    if ((string)$has_deduction !== '1') {
+                                        echo 'checked';
+                                    }
+                                    ?>
+                                    onchange="toggleDecisionReference()"
+                                >
+                                لا
+                            </label>
+
+                        </div>
+
+                    </div>
+
+                    <div
+                        class="reference-group"
+                        id="reference_group"
+                    >
+
+                        <label>
+                            رقم القرار المرجعي
+                        </label>
+
+                        <input
+                            type="text"
+                            name="decision_reference"
+                            id="decision_reference"
+                            class="reference-input"
+                            placeholder="أدخل رقم القرار المرجعي"
+                            value="<?php
+                                echo htmlspecialchars(
+                                    $decision_reference ?? '',
+                                    ENT_QUOTES,
+                                    'UTF-8'
+                                );
+                            ?>"
+                        >
+
+                    </div>
 
                 </div>
 
@@ -1364,6 +1610,101 @@ function toggleDeliveryDate() {
 }
 
 
+/* show deduction fields if permanent custody */
+
+function togglePermanentFields() {
+
+    const assignmentType =
+        document.getElementById(
+            'assignment_type'
+        ).value;
+
+
+    const deductionBox =
+        document.getElementById(
+            'deduction_box'
+        );
+
+
+    const deductionOptions =
+        document.querySelectorAll(
+            'input[name="has_deduction"]'
+        );
+
+
+    const referenceInput =
+        document.getElementById(
+            'decision_reference'
+        );
+
+
+    if (assignmentType === 'permanent') {
+
+        deductionBox.style.display = 'block';
+
+        deductionOptions.forEach(
+            function (option) {
+                option.disabled = false;
+            }
+        );
+
+        toggleDecisionReference();
+
+    } else {
+
+        deductionBox.style.display = 'none';
+
+        deductionOptions.forEach(
+            function (option) {
+                option.disabled = true;
+            }
+        );
+
+        referenceInput.value = '';
+
+    }
+
+}
+
+
+function toggleDecisionReference() {
+
+    const selected =
+        document.querySelector(
+            'input[name="has_deduction"]:checked'
+        );
+
+
+    const referenceGroup =
+        document.getElementById(
+            'reference_group'
+        );
+
+
+    const referenceInput =
+        document.getElementById(
+            'decision_reference'
+        );
+
+
+    if (
+        selected &&
+        !selected.disabled &&
+        selected.value === '1'
+    ) {
+
+        referenceGroup.style.display = 'block';
+
+    } else {
+
+        referenceGroup.style.display = 'none';
+        referenceInput.value = '';
+
+    }
+
+}
+
+
 /* prevent due date from being before handover date */
 
 function updateDeliveryMinimum() {
@@ -1410,6 +1751,8 @@ document.addEventListener(
     function () {
 
         toggleDeliveryDate();
+
+        togglePermanentFields();
 
         updateDeliveryMinimum();
 
